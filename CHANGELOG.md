@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.3] - 2026-03-05
+
+### Added
+
+- 📓 **Notebook execution support** — new `notebooks` optional extra (`pip install open-terminal[notebooks]`) adds `nbclient` and `ipykernel` for running Jupyter notebooks with per-cell execution and full rich output (images, HTML, LaTeX). Keeps the core package lightweight for users who don't need notebook support.
+
 ## [0.9.2] - 2026-03-05
 
 ### Added
