@@ -24,6 +24,15 @@ That's it — you're up and running at `http://localhost:8000`.
 > [!TIP]
 > If you don't set an API key, one is generated automatically. Grab it with `docker logs open-terminal`.
 
+#### Updating
+
+```bash
+docker pull ghcr.io/open-webui/open-terminal
+docker rm -f open-terminal
+```
+
+Then re-run the `docker run` command above.
+
 ### Bare Metal
 
 No Docker? No problem. Open Terminal is a standard Python package:
