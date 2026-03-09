@@ -88,7 +88,7 @@ def ensure_os_user(username: str) -> str:
     )
     home_dir = f"/home/{username}"
     subprocess.run(
-        ["sudo", "chmod", "750", home_dir],
+        ["sudo", "chmod", "2770", home_dir],
         check=True,
         capture_output=True,
     )

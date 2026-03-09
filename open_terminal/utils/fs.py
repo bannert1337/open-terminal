@@ -2,14 +2,13 @@
 
 Provides :class:`UserFS`, a unified interface for file operations.
 
-**Reads** always use native Python I/O.  In multi-user mode the server
-process is added to each provisioned user's group (via ``usermod -aG``)
-and home directories are ``chmod 750``, so standard ``open()``,
-``os.listdir()``, ``os.stat()`` etc. work without subprocess.
+All I/O uses native Python (``aiofiles`` / ``os``).  In multi-user mode
+the server process is added to each provisioned user's group, and home
+directories are ``chmod 2770`` (setgid + group rwx), so standard file
+operations work without subprocess.
 
-**Writes** route through ``sudo -u`` when a username is set to ensure
-correct file ownership.  In single-user mode they fall back to
-stdlib / aiofiles.
+After each write operation a ``sudo chown`` call fixes file ownership
+so that files belong to the provisioned user, not the server process.
 """
 
 import asyncio
@@ -21,15 +20,10 @@ import aiofiles
 import aiofiles.os
 
 
-def _sudo_cmd(username: str) -> list[str]:
-    """Base sudo prefix for running a command as *username*."""
-    return ["sudo", "-u", username, "--"]
-
-
 class UserFS:
     """Filesystem operations scoped to an optional OS user.
 
-    *username* controls write-side ``sudo -u`` wrapping (``None`` = stdlib).
+    *username* is used for ownership fixups after writes (``None`` = stdlib).
     *home* is the user's home directory (default working directory).
 
     When *username* is set, path validation prevents access to other
@@ -40,15 +34,17 @@ class UserFS:
         self.username = username
         self.home = home or os.getcwd()
 
+    # ------------------------------------------------------------------
+    # Path validation
+    # ------------------------------------------------------------------
+
     def _check_path(self, path: str) -> None:
         """Reject paths inside another user's home directory."""
         if not self.username:
             return
         resolved = os.path.abspath(path)
-        # Only restrict paths under /home/
         if not resolved.startswith("/home/"):
             return
-        # Extract the first component after /home/
         parts = resolved.split("/")  # ['', 'home', '<user>', ...]
         if len(parts) >= 3:
             target_user_dir = parts[2]
@@ -58,8 +54,17 @@ class UserFS:
                     f"Access denied: {resolved} belongs to another user"
                 )
 
+    async def _chown(self, path: str) -> None:
+        """Fix ownership of *path* to the provisioned user."""
+        if self.username:
+            await asyncio.to_thread(
+                subprocess.run,
+                ["sudo", "chown", f"{self.username}:{self.username}", path],
+                check=True, capture_output=True,
+            )
+
     # ------------------------------------------------------------------
-    # Read operations (always native Python — group membership allows it)
+    # Read operations
     # ------------------------------------------------------------------
 
     async def read(self, path: str) -> bytes:
@@ -125,79 +130,42 @@ class UserFS:
         return await asyncio.to_thread(lambda: list(os.walk(path)))
 
     # ------------------------------------------------------------------
-    # Write operations (sudo -u when username is set for correct ownership)
+    # Write operations (native Python + chown for correct ownership)
     # ------------------------------------------------------------------
 
     async def write(self, path: str, content: str, encoding: str = "utf-8") -> None:
         """Write text *content* to *path*, creating parent dirs."""
         self._check_path(path)
-        if self.username:
-            parent = os.path.dirname(path)
-            if parent:
-                await asyncio.to_thread(
-                    subprocess.run,
-                    _sudo_cmd(self.username) + ["mkdir", "-p", parent],
-                    check=True, capture_output=True,
-                )
-            await asyncio.to_thread(
-                subprocess.run,
-                _sudo_cmd(self.username) + ["tee", path],
-                input=content.encode(encoding),
-                check=True, capture_output=True,
-            )
-            return
         parent = os.path.dirname(path)
         if parent:
             await aiofiles.os.makedirs(parent, exist_ok=True)
+            if self.username:
+                await self._chown(parent)
         async with aiofiles.open(path, "w", encoding=encoding) as f:
             await f.write(content)
+        await self._chown(path)
 
     async def write_bytes(self, path: str, data: bytes) -> None:
         """Write raw *data* to *path*, creating parent dirs."""
         self._check_path(path)
-        if self.username:
-            parent = os.path.dirname(path)
-            if parent:
-                await asyncio.to_thread(
-                    subprocess.run,
-                    _sudo_cmd(self.username) + ["mkdir", "-p", parent],
-                    check=True, capture_output=True,
-                )
-            await asyncio.to_thread(
-                subprocess.run,
-                _sudo_cmd(self.username) + ["tee", path],
-                input=data,
-                check=True, capture_output=True,
-            )
-            return
         parent = os.path.dirname(path)
         if parent:
             await aiofiles.os.makedirs(parent, exist_ok=True)
+            if self.username:
+                await self._chown(parent)
         async with aiofiles.open(path, "wb") as f:
             await f.write(data)
+        await self._chown(path)
 
     async def mkdir(self, path: str) -> None:
         """Create directory *path* and parents."""
         self._check_path(path)
-        if self.username:
-            await asyncio.to_thread(
-                subprocess.run,
-                _sudo_cmd(self.username) + ["mkdir", "-p", path],
-                check=True, capture_output=True,
-            )
-            return
         await aiofiles.os.makedirs(path, exist_ok=True)
+        await self._chown(path)
 
     async def remove(self, path: str) -> None:
         """Remove *path* (file or directory)."""
         self._check_path(path)
-        if self.username:
-            await asyncio.to_thread(
-                subprocess.run,
-                _sudo_cmd(self.username) + ["rm", "-rf", path],
-                check=True, capture_output=True,
-            )
-            return
         if os.path.isdir(path):
             await asyncio.to_thread(shutil.rmtree, path)
         else:
@@ -207,11 +175,5 @@ class UserFS:
         """Move *source* to *destination*."""
         self._check_path(source)
         self._check_path(destination)
-        if self.username:
-            await asyncio.to_thread(
-                subprocess.run,
-                _sudo_cmd(self.username) + ["mv", source, destination],
-                check=True, capture_output=True,
-            )
-            return
         await asyncio.to_thread(shutil.move, source, destination)
+        await self._chown(destination)
