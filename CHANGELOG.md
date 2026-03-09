@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.4] - 2026-03-09
+
+### Added
+
+- 🔌 **Per-user port visibility** — in multi-user mode, `/ports` now filters by socket UID so each user only sees their own listening ports.
+
+### Changed
+
+- 📁 **Module reorganization** — moved `runner.py`, `notebooks.py`, and `user_isolation.py` into `open_terminal/utils/` for a cleaner package layout.
+
 ## [0.11.3] - 2026-03-09
 
 ### Fixed
