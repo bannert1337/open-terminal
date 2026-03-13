@@ -1,4 +1,6 @@
-FROM python:3.12
+# Pin to a specific patch version for reproducible builds.
+# To pick up security patches, bump this version and rebuild.
+FROM python:3.12.13
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Core utilities
@@ -37,8 +39,6 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 # Docker CLI + Compose + Buildx (mount socket at runtime for access)
 RUN curl -fsSL https://get.docker.com | sh
 
-# Pull in all available security patches for installed packages.
-RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

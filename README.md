@@ -29,7 +29,7 @@ That's it — you're up and running at `http://localhost:8000`.
 | | `latest` | `slim` | `alpine` |
 |---|---|---|---|
 | **Best for** | AI agent sandboxes | Production / hardened | Edge / CI / minimal footprint |
-| **Size** | ~2 GB | ~500 MB | ~300 MB |
+| **Size** | ~4 GB | ~430 MB | ~230 MB |
 | **Bundled tooling** | Node.js, gcc, ffmpeg, LaTeX, Docker CLI, data science libs | git, curl, jq | git, curl, jq |
 | **Install packages at runtime** | ✔ (has `sudo`) | ✘ | ✘ |
 | **Multi-user / egress firewall** | ✔ | ✔ | ✔ |
