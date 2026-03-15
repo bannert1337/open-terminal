@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.18] - 2026-03-15
+
+### Added
+
+- ⚡ **Configurable log flush strategy** — new `OPEN_TERMINAL_LOG_FLUSH_INTERVAL` and `OPEN_TERMINAL_LOG_FLUSH_BUFFER` environment variables (or `log_flush_interval` / `log_flush_buffer` in config.toml) control how frequently process output is flushed to disk. Default `0` preserves the existing per-chunk flush behaviour. Setting `OPEN_TERMINAL_LOG_FLUSH_INTERVAL=1` reduces fsyncs from ~250/sec to ~1/sec for high-output commands, preventing I/O storms that can make ARM/eMMC systems unresponsive. ([#65](https://github.com/open-webui/open-terminal/issues/65))
+
+### Changed
+
+- 🔧 **Centralized flush control** — per-chunk `flush()` calls removed from `PtyRunner`, `PipeRunner`, and `WinPtyRunner`; flushing is now managed entirely by `BoundedLogWriter` based on the configured interval and buffer settings. An explicit final flush is performed before writing the process end marker.
+
 ## [0.11.17] - 2026-03-14
 
 ### Fixed

@@ -107,6 +107,25 @@ PROCESS_LOG_RETENTION: float = float(
     )
 )
 
+# Minimum interval (in seconds) between log flushes during command execution.
+# 0 (default) = flush after every chunk (current behaviour).
+# Setting this to e.g. 1.0 reduces I/O pressure on high-output commands.
+LOG_FLUSH_INTERVAL: float = float(
+    os.environ.get(
+        "OPEN_TERMINAL_LOG_FLUSH_INTERVAL",
+        config.get("log_flush_interval", 0),
+    )
+)
+
+# Maximum unflushed buffer (in bytes) before a flush is forced.
+# Only relevant when LOG_FLUSH_INTERVAL > 0.  0 = no buffer limit.
+LOG_FLUSH_BUFFER: int = int(
+    os.environ.get(
+        "OPEN_TERMINAL_LOG_FLUSH_BUFFER",
+        config.get("log_flush_buffer", 0),
+    )
+)
+
 ENABLE_NOTEBOOKS = os.environ.get(
     "OPEN_TERMINAL_ENABLE_NOTEBOOKS",
     str(config.get("enable_notebooks", True)),
