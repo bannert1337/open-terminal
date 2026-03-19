@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.21] - 2026-03-19
+
+### Fixed
+
+- 🔍 **Port detection broken since v0.11.2** — `setcap cap_setgid+ep` on the system Python binary (added for multi-user `os.setgroups()`) made all Python processes non-dumpable, blocking `/proc/[pid]/fd/` access needed to resolve socket inodes to PIDs. Ports from user-spawned Python servers were silently filtered out. Fixed by copying the Python binary and granting `cap_setgid` only to the copy (`python3-ot`), used exclusively by the open-terminal server. The system `python3` stays capability-free so user processes remain dumpable. Slim and Alpine images had `setcap` removed entirely since they don't support multi-user mode. ([#85](https://github.com/open-webui/open-terminal/issues/85), [#63](https://github.com/open-webui/open-terminal/issues/63))
+- 📖 **README** — Image Variants table incorrectly listed multi-user mode as supported on slim and alpine images. Multi-user mode requires `sudo`, which only the full image includes.
+
 ## [0.11.20] - 2026-03-15
 
 ### Fixed
